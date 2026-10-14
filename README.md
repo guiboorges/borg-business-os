@@ -1,5 +1,7 @@
 # BORG Business OS
 
+[![CI](https://github.com/guiboorges/borg-business-os/actions/workflows/ci.yml/badge.svg)](https://github.com/guiboorges/borg-business-os/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/guiboorges/borg-business-os)](https://github.com/guiboorges/borg-business-os/releases/latest) [![License: MIT](https://img.shields.io/github/license/guiboorges/borg-business-os)](LICENSE)
+
 **A management dashboard with 6 specialised AI agents and long-term memory, built for people who run a business on their own.**
 
 Sales, pipeline, goals, roadmap and business maths in one place, plus six AI "colleagues" (Operations, Goals, Marketing, Acquisition, Ads and Strategy) who know the business because they read the same memory and the same numbers you do.
