@@ -23,7 +23,7 @@ export default async function ChatAgentPage({
 
   const supabase = await createClient();
 
-  const { data: conversas } = await supabase
+  const { data: conversations } = await supabase
     .from("conversations")
     .select("id, titulo, updated_at")
     .eq("agent_id", agentId)
@@ -49,17 +49,17 @@ export default async function ChatAgentPage({
     <div className="flex h-screen">
       <div className="w-64 shrink-0 overflow-y-auto border-r border-zinc-800 p-3">
         <div className="mb-3 flex items-center justify-between px-1">
-          <h2 className="text-sm font-semibold">{agent.nome}</h2>
+          <h2 className="text-sm font-semibold">{agent.name}</h2>
           <Link
             href={`/chat/${agentId}`}
-            title="Nova conversa"
+            title="New conversation"
             className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white"
           >
             <MessageSquarePlus size={16} />
           </Link>
         </div>
         <ul className="space-y-0.5">
-          {(conversas ?? []).map((conv) => (
+          {(conversations ?? []).map((conv) => (
             <li key={conv.id}>
               <Link
                 href={`/chat/${agentId}?c=${conv.id}`}
@@ -69,7 +69,7 @@ export default async function ChatAgentPage({
                     : "text-zinc-400 hover:bg-zinc-900"
                 }`}
               >
-                {conv.titulo ?? "Conversa"}
+                {conv.titulo ?? "Conversation"}
               </Link>
             </li>
           ))}
@@ -80,7 +80,7 @@ export default async function ChatAgentPage({
         <Chat
           key={conversationId}
           agentId={agentId}
-          agentNome={agent.nome}
+          agentName={agent.name}
           conversationId={conversationId}
           initialMessages={initialMessages}
         />

@@ -1,8 +1,8 @@
 /**
- * Aplica as migrations de supabase/migrations/ por ordem, diretamente na
- * base de dados (precisa de SUPABASE_DB_PASSWORD no .env.local).
+ * Applies the migrations in supabase/migrations/ in order, directly against
+ * the database (requires SUPABASE_DB_PASSWORD in .env.local).
  *
- * Uso: npx tsx scripts/apply-migrations.ts
+ * Usage: npx tsx scripts/apply-migrations.ts
  */
 import { Client } from "pg";
 import { readdirSync, readFileSync } from "node:fs";
@@ -16,12 +16,12 @@ const ref = url.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
 const password = process.env.SUPABASE_DB_PASSWORD;
 
 if (!ref || !password) {
-  console.error("❌ Falta NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_DB_PASSWORD no .env.local");
+  console.error("❌ NEXT_PUBLIC_SUPABASE_URL or SUPABASE_DB_PASSWORD is missing from .env.local");
   process.exit(1);
 }
 
-// Tenta ligação direta (IPv6-only) e depois os poolers regionais
-const REGIOES = [
+// Try the direct connection (IPv6-only) first, then the regional poolers
+const REGIONS = [
   "aws-1-eu-north-1",
   "aws-0-eu-north-1",
   "aws-1-eu-west-1",
@@ -31,9 +31,9 @@ const REGIOES = [
   "aws-1-eu-central-1",
   "aws-0-eu-central-1",
 ];
-const candidatos = [
+const candidates = [
   { host: `db.${ref}.supabase.co`, port: 5432, user: "postgres" },
-  ...REGIOES.map((r) => ({
+  ...REGIONS.map((r) => ({
     host: `${r}.pooler.supabase.com`,
     port: 5432,
     user: `postgres.${ref}`,
@@ -41,7 +41,7 @@ const candidatos = [
 ];
 
 async function connect(): Promise<Client> {
-  for (const c of candidatos) {
+  for (const c of candidates) {
     const client = new Client({
       host: c.host,
       port: c.port,
@@ -53,14 +53,14 @@ async function connect(): Promise<Client> {
     });
     try {
       await client.connect();
-      console.log(`🔌 Ligado via ${c.host}`);
+      console.log(`🔌 Connected via ${c.host}`);
       return client;
     } catch (err) {
       console.log(`   ✗ ${c.host}: ${(err as Error).message.slice(0, 80)}`);
       await client.end().catch(() => {});
     }
   }
-  throw new Error("Não consegui ligar à base de dados por nenhum host.");
+  throw new Error("Could not connect to the database through any host.");
 }
 
 async function main() {
@@ -78,7 +78,7 @@ async function main() {
     } catch (err) {
       const msg = (err as Error).message;
       if (/already exists/i.test(msg)) {
-        console.log(`⏭️  ${file} (já aplicada: ${msg.slice(0, 60)})`);
+        console.log(`⏭️  ${file} (already applied: ${msg.slice(0, 60)})`);
       } else {
         console.error(`❌ ${file}: ${msg}`);
         await client.end();
@@ -90,7 +90,7 @@ async function main() {
   const { rows } = await client.query(
     `select table_name from information_schema.tables where table_schema='public' order by 1`
   );
-  console.log(`\n📋 Tabelas criadas: ${rows.map((r) => r.table_name).join(", ")}`);
+  console.log(`\n📋 Tables created: ${rows.map((r) => r.table_name).join(", ")}`);
   await client.end();
 }
 

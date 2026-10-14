@@ -3,13 +3,22 @@ import { createRoadmapItem, updateRoadmapItem } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-const HORIZONTES = [
-  { id: "agora", label: "Agora" },
-  { id: "proximo", label: "Próximo" },
-  { id: "depois", label: "Depois" },
+// Ids are the values stored in the database (Portuguese enum values);
+// labels are what the UI shows.
+const HORIZONS = [
+  { id: "agora", label: "Now" },
+  { id: "proximo", label: "Next" },
+  { id: "depois", label: "Later" },
 ] as const;
 
-const CATEGORIA_CORES: Record<string, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
+  produto: "product",
+  gtm: "go-to-market",
+  operacoes: "operations",
+  financeiro: "finance",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
   produto: "bg-blue-500/15 text-blue-300",
   gtm: "bg-emerald-500/15 text-emerald-300",
   operacoes: "bg-amber-500/15 text-amber-300",
@@ -37,16 +46,16 @@ export default async function RoadmapPage() {
           + Item
         </summary>
         <form action={createRoadmapItem} className="flex flex-wrap items-end gap-2 p-4 pt-1">
-          <input name="titulo" required placeholder="Título *" className={inputCls} />
-          <input name="descricao" placeholder="Descrição" className={`${inputCls} w-64`} />
+          <input name="titulo" required placeholder="Title *" className={inputCls} />
+          <input name="descricao" placeholder="Description" className={`${inputCls} w-64`} />
           <select name="categoria" className={inputCls} defaultValue="gtm">
-            <option value="produto">Produto</option>
+            <option value="produto">Product</option>
             <option value="gtm">Go-To-Market</option>
-            <option value="operacoes">Operações</option>
-            <option value="financeiro">Financeiro</option>
+            <option value="operacoes">Operations</option>
+            <option value="financeiro">Finance</option>
           </select>
           <select name="horizonte" className={inputCls} defaultValue="proximo">
-            {HORIZONTES.map((h) => (
+            {HORIZONS.map((h) => (
               <option key={h.id} value={h.id}>{h.label}</option>
             ))}
           </select>
@@ -54,13 +63,13 @@ export default async function RoadmapPage() {
             type="submit"
             className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
           >
-            Guardar
+            Save
           </button>
         </form>
       </details>
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {HORIZONTES.map((h) => {
+        {HORIZONS.map((h) => {
           const colItems = (items ?? []).filter((i) => i.horizonte === h.id);
           return (
             <div key={h.id} className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
@@ -76,9 +85,9 @@ export default async function RoadmapPage() {
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-medium text-white">{item.titulo}</p>
                       <span
-                        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${CATEGORIA_CORES[item.categoria] ?? ""}`}
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${CATEGORY_COLORS[item.categoria] ?? ""}`}
                       >
-                        {item.categoria}
+                        {CATEGORY_LABELS[item.categoria] ?? item.categoria}
                       </span>
                     </div>
                     {item.descricao && (
@@ -91,7 +100,7 @@ export default async function RoadmapPage() {
                         defaultValue={item.horizonte}
                         className="rounded border border-zinc-700 bg-zinc-800 px-1 py-0.5 text-xs"
                       >
-                        {HORIZONTES.map((hh) => (
+                        {HORIZONS.map((hh) => (
                           <option key={hh.id} value={hh.id}>{hh.label}</option>
                         ))}
                       </select>
@@ -100,10 +109,10 @@ export default async function RoadmapPage() {
                         defaultValue={item.status}
                         className="rounded border border-zinc-700 bg-zinc-800 px-1 py-0.5 text-xs"
                       >
-                        <option value="ideia">ideia</option>
-                        <option value="planeado">planeado</option>
-                        <option value="em_curso">em curso</option>
-                        <option value="feito">feito</option>
+                        <option value="ideia">idea</option>
+                        <option value="planeado">planned</option>
+                        <option value="em_curso">in progress</option>
+                        <option value="feito">done</option>
                       </select>
                       <button
                         type="submit"
@@ -115,7 +124,7 @@ export default async function RoadmapPage() {
                   </div>
                 ))}
                 {colItems.length === 0 && (
-                  <p className="py-4 text-center text-xs text-zinc-600">vazio</p>
+                  <p className="py-4 text-center text-xs text-zinc-600">empty</p>
                 )}
               </div>
             </div>

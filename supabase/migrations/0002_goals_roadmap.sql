@@ -1,4 +1,12 @@
--- Metas e road-map estratégico
+-- Goals and strategic roadmap
+--
+-- Glossary (Portuguese identifiers kept as a stable API):
+--   goal_metrica: novos_clientes = new customers, reunioes = meetings, receita = revenue.
+--   goal_status: ativa = active, atingida = achieved, falhada = missed, arquivada = archived.
+--   roadmap_categoria: produto = product, operacoes = operations, financeiro = finance.
+--   roadmap_horizonte: agora = now, proximo = next, depois = later.
+--   roadmap_status: ideia = idea, planeado = planned, em_curso = in progress, feito = done.
+--   valor_alvo = target value, periodo_inicio/fim = period start/end, ordem = sort order.
 
 create type goal_metrica as enum ('mrr', 'novos_clientes', 'reunioes', 'receita', 'leads', 'custom');
 create type goal_status as enum ('ativa', 'atingida', 'falhada', 'arquivada');
@@ -12,7 +20,7 @@ create table goals (
   descricao text,
   tipo_metrica goal_metrica not null default 'custom',
   valor_alvo numeric(12,2) not null,
-  -- para metas não deriváveis dos dados (ex.: "12 livros lidos")
+  -- for goals that can't be derived from the data (e.g. "12 books read")
   valor_atual_manual numeric(12,2),
   periodo_inicio date not null,
   periodo_fim date not null,

@@ -1,5 +1,8 @@
 "use server";
 
+// Form field names and stored values match the database schema (Portuguese
+// identifiers, e.g. etapa = stage, "ganho" = won, "perdido" = lost).
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
@@ -8,7 +11,7 @@ async function db() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  if (!user) throw new Error("Not authenticated");
   return supabase;
 }
 
@@ -50,20 +53,20 @@ export async function createDeal(formData: FormData) {
   revalidatePath("/pipeline");
 }
 
-export async function updateDealEtapa(formData: FormData) {
+export async function updateDealStage(formData: FormData) {
   const supabase = await db();
-  const etapa = String(formData.get("etapa"));
+  const stage = String(formData.get("etapa"));
   const patch: Record<string, unknown> = {
-    etapa,
+    etapa: stage,
     updated_at: new Date().toISOString(),
   };
-  if (etapa === "ganho") {
+  if (stage === "ganho") {
     patch.data_fecho_real = new Date().toISOString().slice(0, 10);
     patch.probabilidade = 100;
-    const valorFechado = Number(formData.get("valor_fechado") ?? 0);
-    if (valorFechado > 0) patch.valor_fechado = valorFechado;
+    const closedValue = Number(formData.get("valor_fechado") ?? 0);
+    if (closedValue > 0) patch.valor_fechado = closedValue;
   }
-  if (etapa === "perdido") patch.probabilidade = 0;
+  if (stage === "perdido") patch.probabilidade = 0;
   await supabase.from("deals").update(patch).eq("id", String(formData.get("deal_id")));
   revalidatePath("/pipeline");
   revalidatePath("/");

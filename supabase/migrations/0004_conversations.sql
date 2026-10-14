@@ -1,4 +1,4 @@
--- Histórico de conversas com os agentes
+-- Conversation history with the agents (titulo = title)
 
 create table conversations (
   id uuid primary key default gen_random_uuid(),
@@ -12,7 +12,7 @@ create table messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references conversations(id) on delete cascade,
   role text not null check (role in ('user', 'assistant', 'system')),
-  -- partes da mensagem no formato do AI SDK (texto + tool calls)
+  -- message parts in the AI SDK format (text + tool calls)
   content jsonb not null,
   tokens_in int,
   tokens_out int,

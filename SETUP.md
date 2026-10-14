@@ -1,68 +1,72 @@
 # Setup — BORG Business OS
 
-Passos que só tu podes fazer (contas e chaves). Depois de os completares, preenche o `.env.local` e diz ao Claude para continuar.
+Steps only you can do (accounts and keys). Once you've completed them, fill in `.env.local` and tell Claude to carry on.
 
-## 1. Supabase (base de dados + auth) — grátis
+## 1. Supabase (database + auth) — free
 
-1. Vai a [supabase.com](https://supabase.com) → **Start your project** → cria conta (podes usar o GitHub)
+1. Go to [supabase.com](https://supabase.com) → **Start your project** → create an account (you can use GitHub)
 2. **New project**:
-   - Nome: `borg-business-os`
-   - Database password: gera uma forte e guarda-a
-   - Região: **West EU (Ireland)** (mais próxima de Portugal)
-   - Plano: Free
-3. Quando o projeto estiver criado, vai a **Settings → API** e copia para o `.env.local`:
+   - Name: `borg-business-os`
+   - Database password: generate a strong one and keep it safe
+   - Region: the one closest to you (e.g. **West EU (Ireland)** for Europe)
+   - Plan: Free
+3. Once the project is created, go to **Settings → API** and copy into `.env.local`:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ secreta, nunca partilhar)
-4. **Criar o teu utilizador**: painel → **Authentication → Users → Add user** → o teu email + password à tua escolha → marca "Auto Confirm User"
-5. **Desativar registos públicos**: **Authentication → Sign In / Up → desativa "Allow new users to sign up"**
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ secret, never share it)
+4. **Create your user**: dashboard → **Authentication → Users → Add user** → your email + a password of your choice → tick "Auto Confirm User"
+5. **Disable public sign-ups**: **Authentication → Sign In / Up → turn off "Allow new users to sign up"**
 
-## 2. Anthropic (API dos agentes) — pagamento por uso
+## 2. Anthropic (the agents' API) — pay as you go
 
-1. Vai a [console.anthropic.com](https://console.anthropic.com) → cria conta
-2. **Billing** → adiciona cartão e carrega **US$ 5** de crédito (chega para semanas de uso)
-3. **Recomendado**: em Billing, define um **limite de gasto mensal** (ex.: US$ 20) para nunca haver surpresas
-4. **API Keys → Create Key** → nome `borg-business-os` → copia a chave (só aparece uma vez) → `ANTHROPIC_API_KEY` no `.env.local`
+1. Go to [console.anthropic.com](https://console.anthropic.com) → create an account
+2. **Billing** → add a card and load **US$ 5** of credit (enough for weeks of use)
+3. **Recommended**: in Billing, set a **monthly spend limit** (e.g. US$ 20) so there are never any surprises
+4. **API Keys → Create Key** → name it `borg-business-os` → copy the key (it's only shown once) → `ANTHROPIC_API_KEY` in `.env.local`
 
-## 3. Aplicar as migrations (criar as tabelas)
+## 3. Apply the migrations (create the tables)
 
-No painel do Supabase → **SQL Editor** → cola e corre, **por ordem**, o conteúdo de cada ficheiro em `supabase/migrations/` (0001 → 0006).
+In the Supabase dashboard → **SQL Editor** → paste and run, **in order**, the contents of each file in `supabase/migrations/` (0001 → 0006). Alternatively, paste `supabase/all-migrations.sql`, which contains all six in order.
 
-(Alternativa por CLI: `npx supabase link --project-ref <ref>` e `npx supabase db push`.)
+(CLI alternative: `npx supabase link --project-ref <ref>` and `npx supabase db push`.)
 
-## 4. Carregar a memória e os leads
+Full-text search over the memory uses Postgres's `english` configuration. If your vault notes are in another language, change `'english'` in `0003_agent_memory.sql` before applying it (and in the `.textSearch` calls in `src/`) — see the README.
+
+## 4. Load the memory and the leads
 
 ```bash
 cd borg-business-os
 
-npm run seed:knowledge   # copia as bases de conhecimento (G4 + frameworks) para o vault
-npm run sync             # sobe as notas do vault Obsidian para o Supabase (~120+ notas)
-npm run import:leads     # dry-run da importação dos Excel de prospecção
-npm run import:leads -- --commit   # importa de verdade
+npm run seed:knowledge   # copies the knowledge bases (G4 + frameworks) into the vault
+npm run sync             # uploads the Obsidian vault notes to Supabase
+npm run import:leads     # dry run of the prospecting spreadsheet import
+npm run import:leads -- --commit   # imports for real
 ```
 
-## 5. Testar
+The lead import reads `prospects.xlsx` (sheet "Prospects") and `outreach.xlsx` (sheet "Outreach") from `LEADS_DIR`; the expected columns are documented at the top of `scripts/import-excel.ts`.
+
+## 5. Test it
 
 ```bash
 npm run dev
 ```
 
-Abre http://localhost:3000:
-1. Login com o utilizador do passo 1.4
-2. **Memória** → deves ver as notas do vault com busca
-3. **Pipeline** → leads importados dos Excel
-4. **Agentes → Gestão** → pergunta "qual é o nosso ICP?" — deve pesquisar a memória e citar notas reais
-5. **Agentes → Metas** → cria uma meta em /metas (ex.: MRR €1.500 até 2026-12-31) e pergunta "como estamos vs a meta?"
+Open http://localhost:3000:
+1. Log in with the user from step 1.4
+2. **Memory** → you should see the vault notes, with search
+3. **Pipeline** → leads imported from the spreadsheets
+4. **Agents → Operations** → ask "what is our ICP?" — it should search the memory and cite real notes
+5. **Agents → Goals** → create a goal at /goals (e.g. MRR €1,500 by 2026-12-31) and ask "how are we doing against the goal?"
 
-## 6. Deploy na Vercel (quando quiseres a app acessível de qualquer lado)
+## 6. Deploy to Vercel (when you want the app reachable from anywhere)
 
-1. Cria um repo **privado** no GitHub e faz push (`git remote add origin … && git push -u origin main`)
-2. [vercel.com](https://vercel.com) → Import do repo → Framework: Next.js
-3. Em **Environment Variables**, adiciona `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` (⚠️ **não** adiciones `VAULT_PATH` — o sync corre só no teu Mac)
-4. Deploy. O `npm run sync` local continua a funcionar contra o mesmo Supabase.
+1. Create a **private** GitHub repo and push (`git remote add origin … && git push -u origin main`)
+2. [vercel.com](https://vercel.com) → Import the repo → Framework: Next.js
+3. Under **Environment Variables**, add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` (⚠️ do **not** add `VAULT_PATH` — the sync only runs on your own machine)
+4. Deploy. The local `npm run sync` keeps working against the same Supabase.
 
-## Rotina de uso
+## Day-to-day routine
 
-- Editas notas no Obsidian → `npm run sync` quando quiseres atualizar a memória dos agentes
-- Notas escritas pelos agentes aparecem no vault em `09 - Agentes/` após o sync
-- ⚠️ O Supabase free pausa após ~7 dias sem uso; com uso diário não acontece (o painel permite retomar)
+- Edit notes in Obsidian → `npm run sync` whenever you want to update the agents' memory
+- Notes written by the agents appear in the vault under `09 - Agents/` after the sync
+- ⚠️ Free Supabase projects pause after ~7 days without use; with daily use it doesn't happen (the dashboard lets you resume it)

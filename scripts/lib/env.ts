@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Carrega .env.local para process.env (scripts correm fora do Next.js)
+// Loads .env.local into process.env (scripts run outside Next.js)
 export function loadEnv() {
   const envPath = resolve(import.meta.dirname, "../../.env.local");
   const lines = readFileSync(envPath, "utf8").split("\n");

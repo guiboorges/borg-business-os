@@ -1,7 +1,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-// Cliente com service role — contorna RLS. Usar APENAS em route handlers
-// server-side e scripts locais; nunca importar em componentes de cliente.
+// Service-role client — bypasses RLS. Use ONLY in server-side route handlers
+// and local scripts; never import it in client components.
 export function createAdminClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

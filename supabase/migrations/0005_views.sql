@@ -1,6 +1,9 @@
--- Views de KPIs: a MESMA fonte de verdade para a dashboard e para as tools dos agentes
+-- KPI views: the SAME source of truth for the dashboard and the agents' tools.
+-- View names are kept as a stable API: v_receita_mensal = monthly revenue,
+-- v_mrr_atual = current MRR, v_pipeline_resumo = pipeline summary,
+-- v_funil_conversao = conversion funnel, v_progresso_metas = goal progress.
 
--- Receita por mês, separando recorrente (mensalidades) de pontual (setup/extra)
+-- Revenue per month, splitting recurring (monthly fees) from one-off (setup/extra)
 create view v_receita_mensal as
 select
   date_trunc('month', data_pagamento)::date as mes,
@@ -12,7 +15,7 @@ where status = 'paga' and data_pagamento is not null
 group by 1
 order by 1;
 
--- MRR atual = soma dos deals ganhos recorrentes (contratos ativos)
+-- Current MRR = sum of won recurring deals (active contracts)
 create view v_mrr_atual as
 select
   coalesce(sum(valor_fechado), 0) as mrr,
@@ -21,7 +24,7 @@ select
 from deals
 where etapa = 'ganho' and tipo_receita = 'recorrente';
 
--- Pipeline por etapa com valor ponderado por probabilidade
+-- Pipeline per stage with probability-weighted value
 create view v_pipeline_resumo as
 select
   etapa,
@@ -32,7 +35,7 @@ from deals
 where etapa not in ('ganho', 'perdido')
 group by etapa;
 
--- Funil de conversão de leads (contagens por status)
+-- Lead conversion funnel (counts per status)
 create view v_funil_conversao as
 with contagens as (
   select
@@ -50,7 +53,7 @@ select
   round(100.0 * convertidos / nullif(reunioes, 0), 1) as taxa_fecho_pct
 from contagens;
 
--- Progresso de metas: valor atual derivado dos dados conforme o tipo de métrica
+-- Goal progress: current value derived from the data according to the metric type
 create view v_progresso_metas as
 select
   g.*,

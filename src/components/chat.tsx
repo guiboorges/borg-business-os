@@ -6,25 +6,25 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { Loader2, Search, Send, Wrench } from "lucide-react";
 
 const toolLabels: Record<string, string> = {
-  memory_search: "pesquisou a memória",
-  memory_read: "leu uma nota",
-  memory_list: "listou notas",
-  memory_write: "gravou uma nota",
-  memory_edit: "editou uma nota",
-  query_kpis: "consultou os KPIs",
-  list_deals: "consultou o pipeline",
-  list_leads: "consultou os leads",
-  get_goals_progress: "consultou as metas",
+  memory_search: "searched memory",
+  memory_read: "read a note",
+  memory_list: "listed notes",
+  memory_write: "saved a note",
+  memory_edit: "edited a note",
+  query_kpis: "checked the KPIs",
+  list_deals: "checked the pipeline",
+  list_leads: "checked the leads",
+  get_goals_progress: "checked the goals",
 };
 
 export function Chat({
   agentId,
-  agentNome,
+  agentName,
   conversationId,
   initialMessages,
 }: {
   agentId: string;
-  agentNome: string;
+  agentName: string;
   conversationId: string;
   initialMessages: UIMessage[];
 }) {
@@ -52,8 +52,8 @@ export function Chat({
       <div className="flex-1 space-y-4 overflow-y-auto p-6">
         {messages.length === 0 && (
           <p className="mt-12 text-center text-sm text-zinc-500">
-            Fala com o agente de {agentNome}. Ele conhece a memória do negócio e
-            os dados atuais.
+            Talk to the {agentName} agent. It knows the business memory and
+            the current data.
           </p>
         )}
 
@@ -79,7 +79,7 @@ export function Chat({
                 }
                 if (part.type.startsWith("tool-")) {
                   const toolName = part.type.slice(5);
-                  const label = toolLabels[toolName] ?? `usou ${toolName}`;
+                  const label = toolLabels[toolName] ?? `used ${toolName}`;
                   return (
                     <p
                       key={i}
@@ -102,7 +102,7 @@ export function Chat({
 
         {busy && (
           <div className="flex items-center gap-2 text-sm text-zinc-500">
-            <Loader2 size={14} className="animate-spin" />A pensar…
+            <Loader2 size={14} className="animate-spin" />Thinking…
           </div>
         )}
       </div>
@@ -114,7 +114,7 @@ export function Chat({
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={`Pergunta ao agente de ${agentNome}…`}
+          placeholder={`Ask the ${agentName} agent…`}
           className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
         />
         <button

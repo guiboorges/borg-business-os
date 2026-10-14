@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
-import { NEGOCIO } from "@/config/negocio";
+import { BUSINESS } from "@/config/business";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError("Credenciais inválidas. Tenta novamente.");
+      setError("Invalid credentials. Please try again.");
       setLoading(false);
       return;
     }
@@ -41,7 +41,7 @@ export default function LoginPage() {
             BORG <span className="text-emerald-400">Business OS</span>
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            O sistema nervoso central de {NEGOCIO.nome}
+            The central nervous system of {BUSINESS.name}
           </p>
         </div>
 
@@ -63,7 +63,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
-              placeholder="voce@empresa.com"
+              placeholder="you@company.com"
             />
           </div>
 
@@ -91,7 +91,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-400 disabled:opacity-50"
           >
-            {loading ? "A entrar…" : "Entrar"}
+            {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
       </div>

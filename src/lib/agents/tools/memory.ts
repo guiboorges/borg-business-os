@@ -1,11 +1,11 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { NEGOCIO } from "@/config/negocio";
+import { BUSINESS } from "@/config/business";
 
-const AGENT_FOLDER = "09 - Agentes";
+const AGENT_FOLDER = "09 - Agents";
 
-// Filtro de scope aplicado no SERVIDOR — o agente só vê notas {all} ou do seu scope.
+// Scope filter applied on the SERVER — the agent only sees notes scoped {all} or to itself.
 function scopeFilter(agentId: string) {
   return `scope.cs.{all},scope.cs.{${agentId}}`;
 }
@@ -16,32 +16,32 @@ export function memoryTools(agentId: string) {
   return {
     memory_list: tool({
       description:
-        "Lista as notas da memória do negócio (títulos e caminhos), opcionalmente filtradas por pasta. Usa para navegar antes de ler notas específicas.",
+        "Lists the business memory notes (titles and paths), optionally filtered by folder. Use it to browse before reading specific notes.",
       inputSchema: z.object({
-        pasta: z
+        folder: z
           .string()
           .optional()
-          .describe('Prefixo de pasta, ex. "03 - Go-To-Market". Omite para listar tudo.'),
+          .describe('Folder prefix, e.g. "03 - Marketing". Omit to list everything.'),
       }),
-      execute: async ({ pasta }) => {
+      execute: async ({ folder }) => {
         let query = supabase
           .from("agent_memory")
           .select("path, title, source")
           .or(scopeFilter(agentId))
           .order("path")
           .limit(200);
-        if (pasta) query = query.like("path", `${pasta}%`);
+        if (folder) query = query.like("path", `${folder}%`);
         const { data, error } = await query;
-        if (error) return { erro: error.message };
-        return { notas: data };
+        if (error) return { error: error.message };
+        return { notes: data };
       },
     }),
 
     memory_read: tool({
       description:
-        "Lê o conteúdo completo de uma nota da memória pelo seu caminho (obtido via memory_list ou memory_search).",
+        "Reads the full content of a memory note by its path (obtained via memory_list or memory_search).",
       inputSchema: z.object({
-        path: z.string().describe('Caminho da nota, ex. "01 - Vision & Strategy/ICP.md"'),
+        path: z.string().describe('Note path, e.g. "01 - Strategy/ICP.md"'),
       }),
       execute: async ({ path }) => {
         const { data, error } = await supabase
@@ -50,16 +50,16 @@ export function memoryTools(agentId: string) {
           .eq("path", path)
           .or(scopeFilter(agentId))
           .single();
-        if (error) return { erro: `Nota não encontrada: ${path}` };
+        if (error) return { error: `Note not found: ${path}` };
         return data;
       },
     }),
 
     memory_search: tool({
       description:
-        `Busca full-text (português) nas notas da memória do negócio. Usa SEMPRE antes de responder perguntas sobre ${NEGOCIO.nome} — nunca inventes factos do negócio.`,
+        `Full-text search across the business memory notes. ALWAYS use it before answering questions about ${BUSINESS.name} — never invent business facts.`,
       inputSchema: z.object({
-        query: z.string().describe('Termos de busca, ex. "ICP" ou "pricing"'),
+        query: z.string().describe('Search terms, e.g. "ICP" or "pricing"'),
         limit: z.number().int().min(1).max(20).optional().default(8),
       }),
       execute: async ({ query, limit }) => {
@@ -67,77 +67,77 @@ export function memoryTools(agentId: string) {
           .from("agent_memory")
           .select("path, title")
           .or(scopeFilter(agentId))
-          .textSearch("fts", query, { type: "websearch", config: "portuguese" })
+          .textSearch("fts", query, { type: "websearch", config: "english" })
           .limit(limit ?? 8);
-        if (error) return { erro: error.message };
-        if (!data?.length) return { resultado: "Nenhuma nota encontrada para essa busca." };
-        return { resultados: data };
+        if (error) return { error: error.message };
+        if (!data?.length) return { result: "No notes found for that search." };
+        return { results: data };
       },
     }),
 
     memory_write: tool({
       description:
-        `Grava um aprendizado ou decisão durável numa nota tua (pasta "${AGENT_FOLDER}/${agentId}/"). Usa para registar conclusões importantes, não conversas triviais. Atualiza notas existentes em vez de duplicar.`,
+        `Saves a durable learning or decision to one of your own notes (folder "${AGENT_FOLDER}/${agentId}/"). Use it to record important conclusions, not trivial conversations. Update existing notes instead of duplicating them.`,
       inputSchema: z.object({
-        nome_ficheiro: z
+        file_name: z
           .string()
-          .describe('Nome do ficheiro em kebab-case, ex. "aprendizado-pricing.md"'),
-        titulo: z.string(),
-        conteudo: z.string().describe("Conteúdo markdown da nota"),
+          .describe('File name in kebab-case, e.g. "pricing-learnings.md"'),
+        title: z.string(),
+        content: z.string().describe("Markdown content of the note"),
       }),
-      execute: async ({ nome_ficheiro, titulo, conteudo }) => {
-        const safeName = nome_ficheiro.replace(/[^a-zA-Z0-9à-ÿÀ-ß\-_. ]/g, "").trim();
-        if (!safeName.endsWith(".md")) return { erro: "O ficheiro deve terminar em .md" };
+      execute: async ({ file_name, title, content }) => {
+        const safeName = file_name.replace(/[^a-zA-Z0-9à-ÿÀ-ß\-_. ]/g, "").trim();
+        if (!safeName.endsWith(".md")) return { error: "The file name must end in .md" };
         const path = `${AGENT_FOLDER}/${agentId}/${safeName}`;
         const { createHash } = await import("node:crypto");
         const { error } = await supabase.from("agent_memory").upsert(
           {
             path,
-            title: titulo,
-            content: conteudo,
+            title,
+            content,
             scope: ["all"],
             source: "agent",
-            content_hash: createHash("sha256").update(conteudo).digest("hex"),
+            content_hash: createHash("sha256").update(content).digest("hex"),
             updated_at: new Date().toISOString(),
           },
           { onConflict: "path" }
         );
-        if (error) return { erro: error.message };
-        return { gravado: path };
+        if (error) return { error: error.message };
+        return { saved: path };
       },
     }),
 
     memory_edit: tool({
       description:
-        "Edita uma nota TUA (criada por agentes) substituindo um trecho exato de texto. Notas do vault humano são só de leitura.",
+        "Edits one of YOUR notes (created by agents) by replacing an exact passage of text. Notes from the human vault are read-only.",
       inputSchema: z.object({
         path: z.string(),
-        texto_antigo: z.string().describe("Trecho exato a substituir"),
-        texto_novo: z.string(),
+        old_text: z.string().describe("Exact passage to replace"),
+        new_text: z.string(),
       }),
-      execute: async ({ path, texto_antigo, texto_novo }) => {
+      execute: async ({ path, old_text, new_text }) => {
         const { data, error } = await supabase
           .from("agent_memory")
           .select("content, source")
           .eq("path", path)
           .single();
-        if (error) return { erro: `Nota não encontrada: ${path}` };
+        if (error) return { error: `Note not found: ${path}` };
         if (data.source !== "agent")
-          return { erro: "Só podes editar notas criadas por agentes (o vault humano é read-only)." };
-        if (!data.content.includes(texto_antigo))
-          return { erro: "texto_antigo não encontrado na nota." };
-        const novoConteudo = data.content.replace(texto_antigo, texto_novo);
+          return { error: "You can only edit notes created by agents (the human vault is read-only)." };
+        if (!data.content.includes(old_text))
+          return { error: "old_text not found in the note." };
+        const newContent = data.content.replace(old_text, new_text);
         const { createHash } = await import("node:crypto");
         const { error: upErr } = await supabase
           .from("agent_memory")
           .update({
-            content: novoConteudo,
-            content_hash: createHash("sha256").update(novoConteudo).digest("hex"),
+            content: newContent,
+            content_hash: createHash("sha256").update(newContent).digest("hex"),
             updated_at: new Date().toISOString(),
           })
           .eq("path", path);
-        if (upErr) return { erro: upErr.message };
-        return { editado: path };
+        if (upErr) return { error: upErr.message };
+        return { edited: path };
       },
     }),
   };

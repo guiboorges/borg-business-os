@@ -23,10 +23,10 @@ export async function POST(
   const {
     data: { user },
   } = await supabaseAuth.auth.getUser();
-  if (!user) return new Response("Não autenticado", { status: 401 });
+  if (!user) return new Response("Not authenticated", { status: 401 });
 
   const agent = getAgent(agentId);
-  if (!agent) return new Response("Agente não encontrado", { status: 404 });
+  if (!agent) return new Response("Agent not found", { status: 404 });
 
   const { messages, conversationId } = (await req.json()) as {
     messages: UIMessage[];
@@ -35,11 +35,11 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // Garante a conversa e persiste a mensagem do usuário
+  // Ensure the conversation exists and persist the user's message
   const firstText =
     messages
       .find((m) => m.role === "user")
-      ?.parts.find((p) => p.type === "text")?.text ?? "Conversa";
+      ?.parts.find((p) => p.type === "text")?.text ?? "Conversation";
   await admin.from("conversations").upsert(
     {
       id: conversationId,
@@ -58,8 +58,8 @@ export async function POST(
     });
   }
 
-  // Prompt: bloco estável (cacheado) primeiro; contexto dinâmico como
-  // mensagem system separada, fora do prefixo cacheado.
+  // Prompt: stable (cached) block first; dynamic context as a separate
+  // system message, outside the cached prefix.
   const modelMessages: ModelMessage[] = [
     {
       role: "system",
@@ -68,9 +68,9 @@ export async function POST(
     },
     {
       role: "system",
-      content: `Data atual: ${new Date().toISOString().slice(0, 10)}`,
+      content: `Current date: ${new Date().toISOString().slice(0, 10)}`,
     },
-    // Janela das últimas 30 mensagens para conter o contexto
+    // Window of the last 30 messages to keep the context bounded
     ...(await convertToModelMessages(messages.slice(-30))),
   ];
 

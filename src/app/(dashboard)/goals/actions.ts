@@ -8,7 +8,7 @@ export async function createGoal(formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  if (!user) throw new Error("Not authenticated");
 
   await supabase.from("goals").insert({
     titulo: String(formData.get("titulo") ?? "").trim(),
@@ -19,7 +19,7 @@ export async function createGoal(formData: FormData) {
     periodo_inicio: String(formData.get("periodo_inicio")),
     periodo_fim: String(formData.get("periodo_fim")),
   });
-  revalidatePath("/metas");
+  revalidatePath("/goals");
 }
 
 export async function updateGoalStatus(formData: FormData) {
@@ -27,7 +27,7 @@ export async function updateGoalStatus(formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  if (!user) throw new Error("Not authenticated");
 
   await supabase
     .from("goals")
@@ -36,5 +36,5 @@ export async function updateGoalStatus(formData: FormData) {
       updated_at: new Date().toISOString(),
     })
     .eq("id", String(formData.get("goal_id")));
-  revalidatePath("/metas");
+  revalidatePath("/goals");
 }

@@ -1,6 +1,6 @@
--- RLS single-user: acesso total a qualquer utilizador autenticado.
--- Os signups públicos estão desativados no painel, portanto "autenticado" = o fundador.
--- Scripts de sync usam a service_role key, que contorna RLS por design.
+-- Single-user RLS: full access for any authenticated user.
+-- Public sign-ups are disabled in the dashboard, so "authenticated" = the founder.
+-- The sync scripts use the service_role key, which bypasses RLS by design.
 
 do $$
 declare

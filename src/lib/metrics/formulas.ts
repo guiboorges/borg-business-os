@@ -1,52 +1,52 @@
-// Fórmulas de matemática do negócio (metodologia G4).
-// ÚNICA fonte de verdade — usada pela UI e pelas tools dos agentes.
+// Business maths formulas (G4 methodology).
+// The SINGLE source of truth — used by the UI and by the agents' tools.
 
-/** CAC = investimento total em aquisição ÷ novos clientes no período */
-export function cac(custoAquisicaoTotal: number, novosClientes: number): number | null {
-  if (novosClientes === 0) return null;
-  return custoAquisicaoTotal / novosClientes;
+/** CAC = total acquisition spend ÷ new customers in the period */
+export function cac(totalAcquisitionCost: number, newCustomers: number): number | null {
+  if (newCustomers === 0) return null;
+  return totalAcquisitionCost / newCustomers;
 }
 
-/** LTV = ticket médio mensal × margem bruta × meses médios de retenção */
+/** LTV = average monthly ticket × gross margin × average retention months */
 export function ltv(
-  ticketMedioMensal: number,
-  margemBruta: number,
-  mesesRetencao: number
+  avgMonthlyTicket: number,
+  grossMargin: number,
+  retentionMonths: number
 ): number {
-  return ticketMedioMensal * margemBruta * mesesRetencao;
+  return avgMonthlyTicket * grossMargin * retentionMonths;
 }
 
-/** LTV:CAC — >5 supercrescimento; 3-5 sustentável; 1-3 crescimento; <1 insustentável (G4) */
-export function ltvCacRatio(ltvValor: number, cacValor: number | null): number | null {
-  if (!cacValor || cacValor === 0) return null;
-  return ltvValor / cacValor;
+/** LTV:CAC — >5 hypergrowth; 3-5 sustainable; 1-3 growth; <1 unsustainable (G4) */
+export function ltvCacRatio(ltvValue: number, cacValue: number | null): number | null {
+  if (!cacValue || cacValue === 0) return null;
+  return ltvValue / cacValue;
 }
 
-/** Payback do CAC em meses — deve ser ≤ 12 em modelo de recorrência (G4) */
-export function paybackMeses(
-  cacValor: number | null,
-  ticketMedioMensal: number
+/** CAC payback in months — should be ≤ 12 in a recurring-revenue model (G4) */
+export function paybackMonths(
+  cacValue: number | null,
+  avgMonthlyTicket: number
 ): number | null {
-  if (!cacValor || ticketMedioMensal === 0) return null;
-  return cacValor / ticketMedioMensal;
+  if (!cacValue || avgMonthlyTicket === 0) return null;
+  return cacValue / avgMonthlyTicket;
 }
 
-/** Churn mensal = clientes perdidos ÷ clientes ativos no início do mês */
-export function churnRate(clientesPerdidos: number, clientesInicio: number): number | null {
-  if (clientesInicio === 0) return null;
-  return clientesPerdidos / clientesInicio;
+/** Monthly churn = customers lost ÷ active customers at the start of the month */
+export function churnRate(customersLost: number, customersAtStart: number): number | null {
+  if (customersAtStart === 0) return null;
+  return customersLost / customersAtStart;
 }
 
-export function formatEUR(valor: number | null | undefined): string {
-  if (valor === null || valor === undefined) return "—";
-  return new Intl.NumberFormat("pt-PT", {
+export function formatEUR(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 0,
-  }).format(valor);
+  }).format(value);
 }
 
-export function formatPct(valor: number | null | undefined): string {
-  if (valor === null || valor === undefined) return "—";
-  return `${valor.toFixed(1)}%`;
+export function formatPct(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return `${value.toFixed(1)}%`;
 }

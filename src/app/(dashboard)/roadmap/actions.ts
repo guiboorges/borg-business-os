@@ -8,7 +8,7 @@ export async function createRoadmapItem(formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  if (!user) throw new Error("Not authenticated");
 
   await supabase.from("roadmap_items").insert({
     titulo: String(formData.get("titulo") ?? "").trim(),
@@ -24,7 +24,7 @@ export async function updateRoadmapItem(formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  if (!user) throw new Error("Not authenticated");
 
   await supabase
     .from("roadmap_items")

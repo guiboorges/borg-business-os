@@ -1,12 +1,26 @@
 /**
- * Importa os Excel de prospecção (pasta em LEADS_DIR, no .env.local) para a tabela leads.
+ * Imports prospecting spreadsheets (folder set in LEADS_DIR, in .env.local) into the leads table.
  *
- * - Dry-run por defeito (mostra o que faria); `--commit` insere de verdade.
- * - Dedupe por email e por nome de empresa (case-insensitive), incluindo
- *   contra leads já existentes na base de dados.
- * - As linhas 1-2 dos ficheiros são título decorativo; cabeçalhos na linha 3.
+ * - Dry-run by default (shows what it would do); `--commit` actually inserts.
+ * - Dedupes by email and by company name (case-insensitive), including
+ *   against leads that already exist in the database.
+ * - Rows 1-2 of each sheet are a decorative title; headers are on row 3.
  *
- * Uso: npm run import:leads [-- --commit]
+ * Expected files and columns (header names must match exactly):
+ *
+ *   prospects.xlsx — sheet "Prospects"
+ *     Business Name (required) · Business Type · Email · Phone · Location ·
+ *     Website · Suggested Services
+ *
+ *   outreach.xlsx — sheet "Outreach"
+ *     Business Name (required) · Niche · Location · Contact ·
+ *     Problem Identified · Outreach Message · Sent Date · Reply
+ *
+ * Lead status is derived for the outreach sheet: a Reply → "respondeu" (replied),
+ * a Sent Date → "contactado" (contacted), otherwise "novo" (new). These are the
+ * values stored in the database (see supabase/migrations/0001_core_tables.sql).
+ *
+ * Usage: npm run import:leads [-- --commit]
  */
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
@@ -16,9 +30,12 @@ import { loadEnv } from "./lib/env";
 
 loadEnv();
 
-const PASTA = process.env.LEADS_DIR ?? "./dados";
+const FOLDER = process.env.LEADS_DIR ?? "./data";
 const COMMIT = process.argv.includes("--commit");
 
+// Field names match the columns of the `leads` table (Portuguese identifiers):
+// nome = name, empresa = company, nicho = niche, telefone = phone,
+// localidade = location, origem = source, notas = notes.
 interface LeadRow {
   nome: string;
   empresa: string;
@@ -37,64 +54,72 @@ const clean = (v: unknown): string | null => {
   return s || null;
 };
 
-function lerProspectos(): LeadRow[] {
-  const file = join(PASTA, "prospectos.xlsx");
+function readProspects(): LeadRow[] {
+  const file = join(FOLDER, "prospects.xlsx");
   if (!existsSync(file)) return [];
-  const ws = XLSX.readFile(file).Sheets["Prospectos"];
+  const ws = XLSX.readFile(file).Sheets["Prospects"];
+  if (!ws) {
+    console.warn(`⚠️  ${file}: sheet "Prospects" not found (skipped)`);
+    return [];
+  }
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { range: 2 });
   return rows
-    .filter((r) => clean(r["Nome do Negócio"]))
+    .filter((r) => clean(r["Business Name"]))
     .map((r) => ({
-      nome: clean(r["Nome do Negócio"])!,
-      empresa: clean(r["Nome do Negócio"])!,
-      nicho: clean(r["Tipo de Negócio"]),
+      nome: clean(r["Business Name"])!,
+      empresa: clean(r["Business Name"])!,
+      nicho: clean(r["Business Type"]),
       email: clean(r["Email"])?.toLowerCase() ?? null,
-      telefone: clean(r["Telefone"]),
-      localidade: clean(r["Localidade"]),
+      telefone: clean(r["Phone"]),
+      localidade: clean(r["Location"]),
       website: clean(r["Website"]),
       origem: "outbound",
       status: "novo",
-      notas: clean(r["Serviços Sugeridos"])
-        ? `Serviços sugeridos: ${clean(r["Serviços Sugeridos"])}`
+      notas: clean(r["Suggested Services"])
+        ? `Suggested services: ${clean(r["Suggested Services"])}`
         : null,
     }));
 }
 
-function lerProspeccao2026(): LeadRow[] {
-  const file = join(PASTA, "prospeccao.xlsx");
+function readOutreach(): LeadRow[] {
+  const file = join(FOLDER, "outreach.xlsx");
   if (!existsSync(file)) return [];
-  const ws = XLSX.readFile(file).Sheets["Prospecção Comercial"];
+  const ws = XLSX.readFile(file).Sheets["Outreach"];
+  if (!ws) {
+    console.warn(`⚠️  ${file}: sheet "Outreach" not found (skipped)`);
+    return [];
+  }
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { range: 2 });
   return rows
-    .filter((r) => clean(r["Nome do Negócio"]))
+    .filter((r) => clean(r["Business Name"]))
     .map((r) => {
-      const enviado = clean(r["Data de Envio"]);
-      const resposta = clean(r["Resposta"]);
-      const notas = [
-        clean(r["Contacto"]) && `Contacto: ${clean(r["Contacto"])}`,
-        clean(r["Problema Identificado"]) && `Problema: ${clean(r["Problema Identificado"])}`,
-        clean(r["Mensagem de Abordagem"]) && `Mensagem: ${clean(r["Mensagem de Abordagem"])}`,
-        resposta && `Resposta: ${resposta}`,
+      const sent = clean(r["Sent Date"]);
+      const reply = clean(r["Reply"]);
+      const notes = [
+        clean(r["Contact"]) && `Contact: ${clean(r["Contact"])}`,
+        clean(r["Problem Identified"]) && `Problem: ${clean(r["Problem Identified"])}`,
+        clean(r["Outreach Message"]) && `Message: ${clean(r["Outreach Message"])}`,
+        reply && `Reply: ${reply}`,
       ]
         .filter(Boolean)
         .join("\n\n");
       return {
-        nome: clean(r["Nome do Negócio"])!,
-        empresa: clean(r["Nome do Negócio"])!,
-        nicho: clean(r["Nicho"]),
+        nome: clean(r["Business Name"])!,
+        empresa: clean(r["Business Name"])!,
+        nicho: clean(r["Niche"]),
         email: null,
         telefone: null,
-        localidade: clean(r["Localização"]),
+        localidade: clean(r["Location"]),
         website: null,
         origem: "outbound",
-        status: resposta ? "respondeu" : enviado ? "contactado" : "novo",
-        notas: notas || null,
+        status: reply ? "respondeu" : sent ? "contactado" : "novo",
+        notas: notes || null,
       };
     });
 }
 
 async function main() {
-  console.log(`📥 Importação de leads ${COMMIT ? "(COMMIT)" : "(dry-run — usa --commit para inserir)"}\n`);
+  console.log(`📥 Lead import ${COMMIT ? "(COMMIT)" : "(dry-run — use --commit to insert)"}\n`);
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -102,46 +127,46 @@ async function main() {
     { auth: { persistSession: false } }
   );
 
-  const { data: existentes, error } = await supabase.from("leads").select("empresa, email");
+  const { data: existing, error } = await supabase.from("leads").select("empresa, email");
   if (error) {
-    console.error("❌ Erro a ler leads existentes:", error.message);
+    console.error("❌ Error reading existing leads:", error.message);
     process.exit(1);
   }
-  const vistos = new Set<string>();
-  for (const l of existentes ?? []) {
-    if (l.empresa) vistos.add(`emp:${l.empresa.toLowerCase()}`);
-    if (l.email) vistos.add(`eml:${l.email.toLowerCase()}`);
+  const seen = new Set<string>();
+  for (const l of existing ?? []) {
+    if (l.empresa) seen.add(`co:${l.empresa.toLowerCase()}`);
+    if (l.email) seen.add(`em:${l.email.toLowerCase()}`);
   }
 
-  const todos = [...lerProspeccao2026(), ...lerProspectos()];
-  const novos: LeadRow[] = [];
-  let duplicados = 0;
+  const all = [...readOutreach(), ...readProspects()];
+  const fresh: LeadRow[] = [];
+  let duplicates = 0;
 
-  for (const lead of todos) {
-    const kEmp = `emp:${lead.empresa.toLowerCase()}`;
-    const kEml = lead.email ? `eml:${lead.email}` : null;
-    if (vistos.has(kEmp) || (kEml && vistos.has(kEml))) {
-      duplicados++;
+  for (const lead of all) {
+    const kCo = `co:${lead.empresa.toLowerCase()}`;
+    const kEm = lead.email ? `em:${lead.email}` : null;
+    if (seen.has(kCo) || (kEm && seen.has(kEm))) {
+      duplicates++;
       continue;
     }
-    vistos.add(kEmp);
-    if (kEml) vistos.add(kEml);
-    novos.push(lead);
+    seen.add(kCo);
+    if (kEm) seen.add(kEm);
+    fresh.push(lead);
   }
 
-  console.log(`Lidos: ${todos.length} · Novos: ${novos.length} · Duplicados ignorados: ${duplicados}\n`);
-  for (const l of novos.slice(0, 10)) {
+  console.log(`Read: ${all.length} · New: ${fresh.length} · Duplicates skipped: ${duplicates}\n`);
+  for (const l of fresh.slice(0, 10)) {
     console.log(`  + ${l.empresa} (${l.nicho ?? "?"} · ${l.localidade ?? "?"} · ${l.status})`);
   }
-  if (novos.length > 10) console.log(`  … e mais ${novos.length - 10}`);
+  if (fresh.length > 10) console.log(`  … and ${fresh.length - 10} more`);
 
-  if (COMMIT && novos.length > 0) {
-    const { error: insErr } = await supabase.from("leads").insert(novos);
+  if (COMMIT && fresh.length > 0) {
+    const { error: insErr } = await supabase.from("leads").insert(fresh);
     if (insErr) {
-      console.error("\n❌ Erro ao inserir:", insErr.message);
+      console.error("\n❌ Error inserting:", insErr.message);
       process.exit(1);
     }
-    console.log(`\n✅ ${novos.length} leads inseridos.`);
+    console.log(`\n✅ ${fresh.length} leads inserted.`);
   }
 }
 

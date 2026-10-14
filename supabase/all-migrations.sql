@@ -1,4 +1,21 @@
--- Núcleo de vendas: leads, deals, activities, invoices
+-- Sales core: leads, deals, activities, invoices
+--
+-- Note: table/column names and enum values use Portuguese identifiers and are
+-- kept as a stable API (the app and the agents' tools reference them). Glossary:
+--   nome = name, empresa = company, telefone = phone, nicho = niche,
+--   localidade = location, origem = source, notas = notes, titulo = title,
+--   valor_estimado/valor_fechado = estimated/closed value, moeda = currency,
+--   tipo_receita = revenue type (recorrente = recurring), etapa = stage,
+--   probabilidade = probability, data_fecho_prevista/real = expected/actual close date,
+--   motivo_perda = loss reason, tipo = type, descricao = description, custo = cost,
+--   data = date, valor = amount, data_emissao/pagamento = issue/payment date.
+--   lead_status: novo = new, contactado = contacted, respondeu = replied,
+--     reuniao = meeting, desqualificado = disqualified, convertido = converted.
+--   deal_etapa: prospeccao = prospecting, contactado = contacted, proposta = proposal,
+--     negociacao = negotiation, ganho = won, perdido = lost.
+--   activity_tipo: chamada = call, reuniao = meeting, nota = note.
+--   invoice_tipo: mensalidade = monthly fee. invoice_status: pendente = pending,
+--     paga = paid, atrasada = overdue.
 
 create type lead_origem as enum ('outbound', 'inbound', 'referral', 'ads');
 create type lead_status as enum ('novo', 'contactado', 'respondeu', 'reuniao', 'desqualificado', 'convertido');
@@ -48,7 +65,7 @@ create table activities (
   deal_id uuid references deals(id) on delete set null,
   tipo activity_tipo not null default 'nota',
   descricao text not null,
-  -- custo direto de aquisição associado (ads, ferramentas) — alimenta o CAC
+  -- direct acquisition cost attached to the activity (ads, tools) — feeds the CAC
   custo numeric(10,2),
   data date not null default current_date,
   created_at timestamptz not null default now()
@@ -68,7 +85,15 @@ create table invoices (
 create index idx_deals_etapa on deals(etapa);
 create index idx_activities_lead on activities(lead_id);
 create index idx_invoices_status_data on invoices(status, data_pagamento);
--- Metas e road-map estratégico
+-- Goals and strategic roadmap
+--
+-- Glossary (Portuguese identifiers kept as a stable API):
+--   goal_metrica: novos_clientes = new customers, reunioes = meetings, receita = revenue.
+--   goal_status: ativa = active, atingida = achieved, falhada = missed, arquivada = archived.
+--   roadmap_categoria: produto = product, operacoes = operations, financeiro = finance.
+--   roadmap_horizonte: agora = now, proximo = next, depois = later.
+--   roadmap_status: ideia = idea, planeado = planned, em_curso = in progress, feito = done.
+--   valor_alvo = target value, periodo_inicio/fim = period start/end, ordem = sort order.
 
 create type goal_metrica as enum ('mrr', 'novos_clientes', 'reunioes', 'receita', 'leads', 'custom');
 create type goal_status as enum ('ativa', 'atingida', 'falhada', 'arquivada');
@@ -82,7 +107,7 @@ create table goals (
   descricao text,
   tipo_metrica goal_metrica not null default 'custom',
   valor_alvo numeric(12,2) not null,
-  -- para metas não deriváveis dos dados (ex.: "12 livros lidos")
+  -- for goals that can't be derived from the data (e.g. "12 books read")
   valor_atual_manual numeric(12,2),
   periodo_inicio date not null,
   periodo_fim date not null,
@@ -104,23 +129,26 @@ create table roadmap_items (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
--- Memória dos agentes: notas markdown sincronizadas do vault Obsidian
--- + notas escritas pelos agentes + bases de conhecimento
+-- Agent memory: markdown notes synced from the Obsidian vault
+-- + notes written by the agents + knowledge bases.
+-- Full-text search uses the 'english' text search config; for notes in another
+-- language, change it here (e.g. 'portuguese', 'spanish') and in the
+-- .textSearch(..., { config }) calls in src/.
 
 create type memory_source as enum ('vault', 'agent', 'knowledge');
 
 create table agent_memory (
   id uuid primary key default gen_random_uuid(),
-  -- caminho estilo Obsidian, ex. "03 - Go-To-Market/ICP.md"
+  -- Obsidian-style path, e.g. "01 - Strategy/ICP.md"
   path text not null unique,
   title text not null,
   content text not null,
-  -- '{all}' = visível a todos os agentes; ou lista de ids, ex. '{marketing,ads}'
+  -- '{all}' = visible to every agent; or a list of agent ids, e.g. '{marketing,ads}'
   scope text[] not null default '{all}',
   source memory_source not null default 'vault',
   content_hash text not null,
   fts tsvector generated always as (
-    to_tsvector('portuguese', coalesce(title, '') || ' ' || content)
+    to_tsvector('english', coalesce(title, '') || ' ' || content)
   ) stored,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -129,7 +157,7 @@ create table agent_memory (
 create index idx_agent_memory_fts on agent_memory using gin(fts);
 create index idx_agent_memory_scope on agent_memory using gin(scope);
 create index idx_agent_memory_source on agent_memory(source);
--- Histórico de conversas com os agentes
+-- Conversation history with the agents (titulo = title)
 
 create table conversations (
   id uuid primary key default gen_random_uuid(),
@@ -143,7 +171,7 @@ create table messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references conversations(id) on delete cascade,
   role text not null check (role in ('user', 'assistant', 'system')),
-  -- partes da mensagem no formato do AI SDK (texto + tool calls)
+  -- message parts in the AI SDK format (text + tool calls)
   content jsonb not null,
   tokens_in int,
   tokens_out int,
@@ -152,9 +180,12 @@ create table messages (
 
 create index idx_messages_conversation on messages(conversation_id, created_at);
 create index idx_conversations_agent on conversations(agent_id, updated_at desc);
--- Views de KPIs: a MESMA fonte de verdade para a dashboard e para as tools dos agentes
+-- KPI views: the SAME source of truth for the dashboard and the agents' tools.
+-- View names are kept as a stable API: v_receita_mensal = monthly revenue,
+-- v_mrr_atual = current MRR, v_pipeline_resumo = pipeline summary,
+-- v_funil_conversao = conversion funnel, v_progresso_metas = goal progress.
 
--- Receita por mês, separando recorrente (mensalidades) de pontual (setup/extra)
+-- Revenue per month, splitting recurring (monthly fees) from one-off (setup/extra)
 create view v_receita_mensal as
 select
   date_trunc('month', data_pagamento)::date as mes,
@@ -166,7 +197,7 @@ where status = 'paga' and data_pagamento is not null
 group by 1
 order by 1;
 
--- MRR atual = soma dos deals ganhos recorrentes (contratos ativos)
+-- Current MRR = sum of won recurring deals (active contracts)
 create view v_mrr_atual as
 select
   coalesce(sum(valor_fechado), 0) as mrr,
@@ -175,7 +206,7 @@ select
 from deals
 where etapa = 'ganho' and tipo_receita = 'recorrente';
 
--- Pipeline por etapa com valor ponderado por probabilidade
+-- Pipeline per stage with probability-weighted value
 create view v_pipeline_resumo as
 select
   etapa,
@@ -186,7 +217,7 @@ from deals
 where etapa not in ('ganho', 'perdido')
 group by etapa;
 
--- Funil de conversão de leads (contagens por status)
+-- Lead conversion funnel (counts per status)
 create view v_funil_conversao as
 with contagens as (
   select
@@ -204,7 +235,7 @@ select
   round(100.0 * convertidos / nullif(reunioes, 0), 1) as taxa_fecho_pct
 from contagens;
 
--- Progresso de metas: valor atual derivado dos dados conforme o tipo de métrica
+-- Goal progress: current value derived from the data according to the metric type
 create view v_progresso_metas as
 select
   g.*,
@@ -258,9 +289,9 @@ select
   ) / nullif(g.valor_alvo, 0), 1) as progresso_pct
 from goals g
 where g.status = 'ativa';
--- RLS single-user: acesso total a qualquer utilizador autenticado.
--- Os signups públicos estão desativados no painel, portanto "autenticado" = o fundador.
--- Scripts de sync usam a service_role key, que contorna RLS por design.
+-- Single-user RLS: full access for any authenticated user.
+-- Public sign-ups are disabled in the dashboard, so "authenticated" = the founder.
+-- The sync scripts use the service_role key, which bypasses RLS by design.
 
 do $$
 declare

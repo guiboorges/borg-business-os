@@ -1,15 +1,15 @@
 /**
- * Sincronização bidirecional vault Obsidian ↔ Supabase (agent_memory).
+ * Two-way sync between the Obsidian vault and Supabase (agent_memory).
  *
- * Regras:
- *  - O vault é a fonte de verdade para notas humanas (source='vault'): vault ganha sempre.
- *  - Notas de agentes (source='agent', path em "09 - Agentes/") descem para o vault;
- *    se o ficheiro local foi editado à mão desde a última sync, a edição humana
- *    é promovida e regrava a base de dados.
- *  - Manifesto local (.sync-manifest.json) guarda o hash de cada nota na última
- *    sync — é o que permite distinguir de que lado veio a alteração (3-way).
+ * Rules:
+ *  - The vault is the source of truth for human notes (source='vault'): the vault always wins.
+ *  - Agent notes (source='agent', path under "09 - Agents/") are pulled down into the vault;
+ *    if the local file was edited by hand since the last sync, the human edit
+ *    is promoted and overwrites the database.
+ *  - A local manifest (.sync-manifest.json) stores each note's hash at the last
+ *    sync — that is what tells which side a change came from (3-way).
  *
- * Uso: npm run sync [-- --dry-run]
+ * Usage: npm run sync [-- --dry-run]
  */
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
@@ -28,12 +28,12 @@ loadEnv();
 
 const VAULT_PATH = process.env.VAULT_PATH!;
 const MANIFEST_PATH = join(import.meta.dirname, "..", ".sync-manifest.json");
-const AGENT_FOLDER = "09 - Agentes";
+const AGENT_FOLDER = "09 - Agents";
 const IGNORED_DIRS = new Set([".obsidian", ".agents", ".claude", "Personal"]);
 const DRY_RUN = process.argv.includes("--dry-run");
 
 if (!VAULT_PATH || !existsSync(VAULT_PATH)) {
-  console.error(`❌ VAULT_PATH não encontrado: ${VAULT_PATH}`);
+  console.error(`❌ VAULT_PATH not found: ${VAULT_PATH}`);
   process.exit(1);
 }
 
@@ -42,7 +42,7 @@ if (
   !process.env.SUPABASE_SERVICE_ROLE_KEY
 ) {
   console.error(
-    "❌ Chaves Supabase em falta no .env.local — segue o SETUP.md (secção 1) primeiro."
+    "❌ Supabase keys missing from .env.local — follow SETUP.md (section 1) first."
   );
   process.exit(1);
 }
@@ -55,7 +55,7 @@ const supabase = createClient(
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 
-type Manifest = Record<string, string>; // path → hash na última sync
+type Manifest = Record<string, string>; // path → hash at the last sync
 
 function loadManifest(): Manifest {
   if (!existsSync(MANIFEST_PATH)) return {};
@@ -71,8 +71,8 @@ function walkVault(dir: string, files: string[] = []): string[] {
       files.push(join(dir, entry.name));
     } else if (entry.name.endsWith(".icloud")) {
       console.warn(
-        `⚠️  Ficheiro não descarregado do iCloud (ignorado): ${relative(VAULT_PATH, join(dir, entry.name))}\n` +
-          `   Para forçar o download: brctl download "${join(dir, entry.name.replace(/^\./, "").replace(/\.icloud$/, ""))}"`
+        `⚠️  File not downloaded from iCloud (skipped): ${relative(VAULT_PATH, join(dir, entry.name))}\n` +
+          `   To force the download: brctl download "${join(dir, entry.name.replace(/^\./, "").replace(/\.icloud$/, ""))}"`
       );
     }
   }
@@ -110,16 +110,16 @@ async function main() {
   const { data: dbRows, error } = await supabase
     .from("agent_memory")
     .select("path, content, content_hash, source, scope, title");
-  if (error) throw new Error(`Erro a ler agent_memory: ${error.message}`);
+  if (error) throw new Error(`Error reading agent_memory: ${error.message}`);
   const dbByPath = new Map((dbRows ?? []).map((r) => [r.path, r]));
 
-  // ── 1. Upload: notas humanas/conhecimento do vault → Supabase (vault ganha sempre)
+  // ── 1. Upload: human/knowledge notes from the vault → Supabase (the vault always wins)
   for (const note of localFiles) {
     const db = dbByPath.get(note.path);
     const isAgentNote = note.source === "agent";
 
     if (isAgentNote) {
-      // Notas de agentes: só sobem se foram editadas à mão desde a última sync
+      // Agent notes: only uploaded if they were edited by hand since the last sync
       const lastSynced = manifest[note.path];
       if (db && lastSynced && note.hash !== lastSynced && note.hash !== db.content_hash) {
         if (!DRY_RUN) {
@@ -134,11 +134,11 @@ async function main() {
             .eq("path", note.path);
         }
         stats.promoted++;
-        console.log(`✍️  promovida (edição humana): ${note.path}`);
+        console.log(`✍️  promoted (human edit): ${note.path}`);
         newManifest[note.path] = note.hash;
         continue;
       }
-      // caso contrário é tratada no passo de download
+      // otherwise it is handled in the download step
       continue;
     }
 
@@ -156,17 +156,17 @@ async function main() {
           },
           { onConflict: "path" }
         );
-        if (upErr) throw new Error(`Upsert falhou (${note.path}): ${upErr.message}`);
+        if (upErr) throw new Error(`Upsert failed (${note.path}): ${upErr.message}`);
       }
       stats.up++;
-      console.log(`⬆️  ${db ? "atualizada" : "nova"}: ${note.path}`);
+      console.log(`⬆️  ${db ? "updated" : "new"}: ${note.path}`);
     } else {
       stats.unchanged++;
     }
     newManifest[note.path] = note.hash;
   }
 
-  // ── 2. Delete: notas de vault apagadas localmente → apagar na base de dados
+  // ── 2. Delete: vault notes deleted locally → delete them from the database
   for (const row of dbRows ?? []) {
     if (row.source !== "vault") continue;
     if (!localByPath.has(row.path)) {
@@ -174,17 +174,17 @@ async function main() {
         await supabase.from("agent_memory").delete().eq("path", row.path);
       }
       stats.deleted++;
-      console.log(`🗑️  apagada: ${row.path}`);
+      console.log(`🗑️  deleted: ${row.path}`);
     }
   }
 
-  // ── 3. Download: notas de agentes → vault (Supabase ganha, salvo edição humana já promovida)
+  // ── 3. Download: agent notes → vault (Supabase wins, unless a human edit was already promoted)
   for (const row of dbRows ?? []) {
     if (row.source !== "agent") continue;
     const abs = join(VAULT_PATH, row.path);
     const local = localByPath.get(row.path);
 
-    if (local && stats.promoted > 0 && newManifest[row.path]) continue; // já promovida acima
+    if (local && stats.promoted > 0 && newManifest[row.path]) continue; // already promoted above
 
     if (!local || local.hash !== row.content_hash) {
       if (!DRY_RUN) {
@@ -192,7 +192,7 @@ async function main() {
         writeFileSync(abs, row.content, "utf8");
       }
       stats.down++;
-      console.log(`⬇️  agente → vault: ${row.path}`);
+      console.log(`⬇️  agent → vault: ${row.path}`);
     }
     newManifest[row.path] = row.content_hash;
   }
@@ -202,8 +202,8 @@ async function main() {
   }
 
   console.log(
-    `\n✅ Sync completo: ${stats.up} subidas, ${stats.down} descidas, ` +
-      `${stats.promoted} promovidas, ${stats.deleted} apagadas, ${stats.unchanged} sem alteração.`
+    `\n✅ Sync complete: ${stats.up} uploaded, ${stats.down} downloaded, ` +
+      `${stats.promoted} promoted, ${stats.deleted} deleted, ${stats.unchanged} unchanged.`
   );
 }
 

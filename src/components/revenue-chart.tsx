@@ -13,13 +13,13 @@ import {
 export function RevenueChart({
   data,
 }: {
-  data: { mes: string; recorrente: number; pontual: number }[];
+  data: { month: string; recurring: number; oneOff: number }[];
 }) {
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-        <XAxis dataKey="mes" stroke="#71717a" fontSize={12} tickLine={false} />
+        <XAxis dataKey="month" stroke="#71717a" fontSize={12} tickLine={false} />
         <YAxis stroke="#71717a" fontSize={12} tickLine={false} axisLine={false} />
         <Tooltip
           contentStyle={{
@@ -30,10 +30,10 @@ export function RevenueChart({
           }}
           labelStyle={{ color: "#e4e4e7" }}
         />
-        <Bar dataKey="recorrente" name="Recorrente" stackId="r" fill="#10b981" />
+        <Bar dataKey="recurring" name="Recurring" stackId="r" fill="#10b981" />
         <Bar
-          dataKey="pontual"
-          name="Pontual"
+          dataKey="oneOff"
+          name="One-off"
           stackId="r"
           fill="#34d399"
           radius={[4, 4, 0, 0]}

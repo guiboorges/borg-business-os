@@ -6,6 +6,7 @@ import { aquisicao } from "./aquisicao";
 import { ads } from "./ads";
 import { estrategista } from "./estrategista";
 
+// Keys are the stable agent ids (used in /chat/[agent] and the memory folder).
 export const AGENTS: Record<string, AgentConfig> = {
   gestao,
   metas,

@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "BORG Business OS",
-  description: "Dashboard de gestão com 6 agentes de IA e memória de longo prazo",
+  description: "Business dashboard with 6 AI agents and long-term memory",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="pt"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

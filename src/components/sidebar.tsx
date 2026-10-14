@@ -14,12 +14,12 @@ import {
 import { createClient } from "@/lib/supabase/browser";
 
 const nav = [
-  { href: "/", label: "Visão Geral", icon: LayoutDashboard },
+  { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-  { href: "/metas", label: "Metas", icon: Target },
+  { href: "/goals", label: "Goals", icon: Target },
   { href: "/roadmap", label: "Roadmap", icon: Map },
-  { href: "/chat", label: "Agentes", icon: MessageSquare },
-  { href: "/memoria", label: "Memória", icon: BookOpen },
+  { href: "/chat", label: "Agents", icon: MessageSquare },
+  { href: "/memory", label: "Memory", icon: BookOpen },
 ];
 
 export function Sidebar() {
@@ -68,7 +68,7 @@ export function Sidebar() {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-200"
         >
           <LogOut size={17} />
-          Sair
+          Sign out
         </button>
       </div>
     </aside>

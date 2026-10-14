@@ -6,20 +6,20 @@ export const dynamic = "force-dynamic";
 
 const sourceBadge = {
   vault: { label: "Vault", icon: BookOpen, cls: "bg-blue-500/15 text-blue-300" },
-  agent: { label: "Agente", icon: Bot, cls: "bg-emerald-500/15 text-emerald-300" },
+  agent: { label: "Agent", icon: Bot, cls: "bg-emerald-500/15 text-emerald-300" },
   knowledge: {
-    label: "Conhecimento",
+    label: "Knowledge",
     icon: GraduationCap,
     cls: "bg-amber-500/15 text-amber-300",
   },
 } as const;
 
-export default async function MemoriaPage({
+export default async function MemoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; nota?: string }>;
+  searchParams: Promise<{ q?: string; note?: string }>;
 }) {
-  const { q, nota } = await searchParams;
+  const { q, note } = await searchParams;
   const supabase = await createClient();
 
   let query = supabase
@@ -31,61 +31,61 @@ export default async function MemoriaPage({
     query = supabase
       .from("agent_memory")
       .select("path, title, source, scope, updated_at")
-      .textSearch("fts", q, { type: "websearch", config: "portuguese" })
+      .textSearch("fts", q, { type: "websearch", config: "english" })
       .order("path");
   }
 
-  const { data: notas, error } = await query;
+  const { data: notes, error } = await query;
 
-  let notaAberta: { path: string; content: string } | null = null;
-  if (nota) {
+  let openNote: { path: string; content: string } | null = null;
+  if (note) {
     const { data } = await supabase
       .from("agent_memory")
       .select("path, content")
-      .eq("path", nota)
+      .eq("path", note)
       .single();
-    notaAberta = data;
+    openNote = data;
   }
 
-  // Agrupar por pasta de topo
-  const grupos = new Map<string, NonNullable<typeof notas>>();
-  for (const n of notas ?? []) {
-    const pasta = n.path.includes("/") ? n.path.split("/")[0] : "(raiz)";
-    if (!grupos.has(pasta)) grupos.set(pasta, []);
-    grupos.get(pasta)!.push(n);
+  // Group by top-level folder
+  const groups = new Map<string, NonNullable<typeof notes>>();
+  for (const n of notes ?? []) {
+    const folder = n.path.includes("/") ? n.path.split("/")[0] : "(root)";
+    if (!groups.has(folder)) groups.set(folder, []);
+    groups.get(folder)!.push(n);
   }
 
   return (
     <div className="flex h-screen">
       <div className="w-96 shrink-0 overflow-y-auto border-r border-zinc-800 p-4">
-        <h1 className="mb-3 text-lg font-bold">Memória</h1>
+        <h1 className="mb-3 text-lg font-bold">Memory</h1>
 
         <form method="GET" className="mb-4">
           <input
             name="q"
             defaultValue={q ?? ""}
-            placeholder="Buscar nas notas…"
+            placeholder="Search notes…"
             className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
           />
         </form>
 
         {error && (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
-            Sem ligação à base de dados — completa o SETUP.md e corre as
+            No database connection — complete SETUP.md and run the
             migrations + <code>npm run sync</code>.
           </p>
         )}
 
-        {!error && (notas?.length ?? 0) === 0 && (
+        {!error && (notes?.length ?? 0) === 0 && (
           <p className="text-sm text-zinc-500">
-            {q ? "Nenhuma nota encontrada." : "Nenhuma nota — corre npm run sync."}
+            {q ? "No notes found." : "No notes yet — run npm run sync."}
           </p>
         )}
 
-        {[...grupos.entries()].map(([pasta, items]) => (
-          <div key={pasta} className="mb-4">
+        {[...groups.entries()].map(([folder, items]) => (
+          <div key={folder} className="mb-4">
             <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {pasta} · {items.length}
+              {folder} · {items.length}
             </h2>
             <ul className="space-y-0.5">
               {items.map((n) => {
@@ -93,9 +93,9 @@ export default async function MemoriaPage({
                 return (
                   <li key={n.path}>
                     <Link
-                      href={`/memoria?${new URLSearchParams({ ...(q ? { q } : {}), nota: n.path })}`}
+                      href={`/memory?${new URLSearchParams({ ...(q ? { q } : {}), note: n.path })}`}
                       className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-sm ${
-                        nota === n.path
+                        note === n.path
                           ? "bg-zinc-800 text-white"
                           : "text-zinc-300 hover:bg-zinc-900"
                       }`}
@@ -116,18 +116,18 @@ export default async function MemoriaPage({
       </div>
 
       <div className="flex-1 overflow-y-auto p-8">
-        {notaAberta ? (
+        {openNote ? (
           <article>
             <p className="mb-4 font-mono text-xs text-zinc-500">
-              {notaAberta.path}
+              {openNote.path}
             </p>
             <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-zinc-200">
-              {notaAberta.content}
+              {openNote.content}
             </pre>
           </article>
         ) : (
           <p className="text-sm text-zinc-500">
-            Seleciona uma nota à esquerda para a ler.
+            Select a note on the left to read it.
           </p>
         )}
       </div>

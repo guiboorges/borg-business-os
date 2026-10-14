@@ -1,20 +1,23 @@
--- Memória dos agentes: notas markdown sincronizadas do vault Obsidian
--- + notas escritas pelos agentes + bases de conhecimento
+-- Agent memory: markdown notes synced from the Obsidian vault
+-- + notes written by the agents + knowledge bases.
+-- Full-text search uses the 'english' text search config; for notes in another
+-- language, change it here (e.g. 'portuguese', 'spanish') and in the
+-- .textSearch(..., { config }) calls in src/.
 
 create type memory_source as enum ('vault', 'agent', 'knowledge');
 
 create table agent_memory (
   id uuid primary key default gen_random_uuid(),
-  -- caminho estilo Obsidian, ex. "03 - Go-To-Market/ICP.md"
+  -- Obsidian-style path, e.g. "01 - Strategy/ICP.md"
   path text not null unique,
   title text not null,
   content text not null,
-  -- '{all}' = visível a todos os agentes; ou lista de ids, ex. '{marketing,ads}'
+  -- '{all}' = visible to every agent; or a list of agent ids, e.g. '{marketing,ads}'
   scope text[] not null default '{all}',
   source memory_source not null default 'vault',
   content_hash text not null,
   fts tsvector generated always as (
-    to_tsvector('portuguese', coalesce(title, '') || ' ' || content)
+    to_tsvector('english', coalesce(title, '') || ' ' || content)
   ) stored,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
