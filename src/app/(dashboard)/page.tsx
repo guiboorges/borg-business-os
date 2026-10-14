@@ -25,10 +25,15 @@ function KpiCard({
   );
 }
 
+// ISO date (YYYY-MM-DD) n days before today.
+function daysAgoISO(n: number) {
+  return new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+}
+
 export default async function OverviewPage() {
   const supabase = await createClient();
 
-  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const weekAgo = daysAgoISO(7);
 
   const monthStart = new Date();
   monthStart.setDate(1);
