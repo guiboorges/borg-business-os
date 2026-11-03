@@ -8,6 +8,15 @@ Sales, pipeline, goals, roadmap and business maths in one place, plus six AI "co
 
 > I built BORG OS to run my own business. This public version uses a **fictional example business** ("Lumen", a booking app for yoga studios). To use it with yours, edit a single file: [`src/config/business.ts`](src/config/business.ts).
 
+![Overview: MRR, customers, weighted pipeline, CAC, prospecting KPIs and monthly revenue](docs/screenshots/overview.png)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/pipeline.png" alt="Pipeline: deals by stage and the list of leads"></td>
+    <td width="50%"><img src="docs/screenshots/agent.png" alt="Chat with the Operations agent: it checks the memory, KPIs and pipeline before answering"></td>
+  </tr>
+</table>
+
 ---
 
 ## The 6 agents
