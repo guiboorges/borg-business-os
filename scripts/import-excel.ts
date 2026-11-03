@@ -23,7 +23,7 @@
  * Usage: npm run import:leads [-- --commit]
  */
 import { createClient } from "@supabase/supabase-js";
-import * as XLSX from "xlsx";
+import { readSheet, SheetNotFoundError } from "read-excel-file/node";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadEnv } from "./lib/env";
@@ -49,20 +49,37 @@ interface LeadRow {
   notas: string | null;
 }
 
+/**
+ * Reads one sheet as objects keyed by the header row (row 3), like the old
+ * SheetJS `sheet_to_json(ws, { range: 2 })`. Returns null if the sheet is missing.
+ */
+async function readRows(file: string, sheet: string): Promise<Record<string, unknown>[] | null> {
+  let data;
+  try {
+    data = await readSheet(file, sheet);
+  } catch (e) {
+    if (e instanceof SheetNotFoundError) return null;
+    throw e;
+  }
+  const [header = [], ...rows] = data.slice(2);
+  return rows.map((row) =>
+    Object.fromEntries(header.map((h, i) => [String(h ?? ""), row[i]]))
+  );
+}
+
 const clean = (v: unknown): string | null => {
   const s = String(v ?? "").trim();
   return s || null;
 };
 
-function readProspects(): LeadRow[] {
+async function readProspects(): Promise<LeadRow[]> {
   const file = join(FOLDER, "prospects.xlsx");
   if (!existsSync(file)) return [];
-  const ws = XLSX.readFile(file).Sheets["Prospects"];
-  if (!ws) {
+  const rows = await readRows(file, "Prospects");
+  if (!rows) {
     console.warn(`⚠️  ${file}: sheet "Prospects" not found (skipped)`);
     return [];
   }
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { range: 2 });
   return rows
     .filter((r) => clean(r["Business Name"]))
     .map((r) => ({
@@ -81,15 +98,14 @@ function readProspects(): LeadRow[] {
     }));
 }
 
-function readOutreach(): LeadRow[] {
+async function readOutreach(): Promise<LeadRow[]> {
   const file = join(FOLDER, "outreach.xlsx");
   if (!existsSync(file)) return [];
-  const ws = XLSX.readFile(file).Sheets["Outreach"];
-  if (!ws) {
+  const rows = await readRows(file, "Outreach");
+  if (!rows) {
     console.warn(`⚠️  ${file}: sheet "Outreach" not found (skipped)`);
     return [];
   }
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { range: 2 });
   return rows
     .filter((r) => clean(r["Business Name"]))
     .map((r) => {
@@ -138,7 +154,7 @@ async function main() {
     if (l.email) seen.add(`em:${l.email.toLowerCase()}`);
   }
 
-  const all = [...readOutreach(), ...readProspects()];
+  const all = [...(await readOutreach()), ...(await readProspects())];
   const fresh: LeadRow[] = [];
   let duplicates = 0;
 

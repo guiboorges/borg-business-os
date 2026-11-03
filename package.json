@@ -35,10 +35,10 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "pg": "^8.23.0",
+    "read-excel-file": "^9.3.14",
     "supabase": "^2.113.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.11",
-    "typescript": "^5",
-    "xlsx": "^0.18.5"
+    "typescript": "^5"
   }
 }
